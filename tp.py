@@ -15,8 +15,7 @@ class ReproductorMusical:
         self.root.title("Reproductor de Música - Proyecto Final")
         self.root.geometry("600x500")
         
-        # Inicializar Pygame Mixer para el audio
-        pygame.mixer.init()
+        pygame.mixer.init()        
         
         self.lista_canciones = []
         self.indice_actual = 0
@@ -86,3 +85,100 @@ class ReproductorMusical:
         self.slider_volumen = ttk.Scale(frame_extras, from_=0, to=1, orient="horizontal", command=self.cambiar_volumen)
         self.slider_volumen.set(0.5) # Volumen a la mitad por defecto
         self.slider_volumen.pack(side="left")
+
+        def cargar_carpeta(self):
+        carpeta = filedialog.askdirectory()
+        if not carpeta:
+            return
+        
+        self.lista_canciones.clear()
+        self.listbox.delete(0, tk.END)
+        
+        for archivo in os.listdir(carpeta):
+            if archivo.endswith(".mp3"):
+                ruta_completa = os.path.join(carpeta, archivo)
+                info = self.extraer_metadatos(ruta_completa)
+                self.lista_canciones.append(info)
+                # Mostrar en la lista de forma simple
+                texto_lista = f"{info['artista']} - {info['titulo']}"
+                self.listbox.insert(tk.END, texto_lista)
+
+    def extraer_metadatos(self, ruta):
+        info = {
+            "ruta": ruta,
+            "titulo": os.path.basename(ruta).replace(".mp3", ""),
+            "artista": "Desconocido",
+            "album": "Desconocido",
+            "duracion": 0
+        }
+        try:
+            audio = MP3(ruta, ID3=ID3)
+            info["duracion"] = audio.info.length
+            
+            # Leer etiquetas ID3
+            if audio.tags:
+                if 'TIT2' in audio.tags:
+                    info["titulo"] = str(audio.tags['TIT2'])
+                if 'TPE1' in audio.tags:
+                    info["artista"] = str(audio.tags['TPE1'])
+                if 'TALB' in audio.tags:
+                    info["album"] = str(audio.tags['TALB'])
+        except Exception as e:
+            print(f"Error leyendo {ruta}: {e}")
+            
+        return info
+
+    def reproducir(self):
+        if not self.lista_canciones:
+            return
+            
+        cancion = self.lista_canciones[self.indice_actual]
+        pygame.mixer.music.load(cancion["ruta"])
+        pygame.mixer.music.play()
+        self.reproduciendo = True
+        
+        # Actualizar info en pantalla
+        self.label_titulo.config(text=f"Título: {cancion['titulo']}")
+        self.label_artista.config(text=f"Artista: {cancion['artista']}")
+        self.label_album.config(text=f"Álbum: {cancion['album']}")
+        self.mostrar_caratula(cancion["ruta"])
+        
+        # Marcar en la lista
+        self.listbox.selection_clear(0, tk.END)
+        self.listbox.selection_set(self.indice_actual)
+        self.listbox.activate(self.indice_actual)
+
+    def pausar(self):
+        if self.reproduciendo:
+            pygame.mixer.music.pause()
+            self.reproduciendo = False
+        else:
+            pygame.mixer.music.unpause()
+            self.reproduciendo = True
+
+    def parar(self):
+        pygame.mixer.music.stop()
+        self.reproduciendo = False
+
+    def siguiente(self):
+        if not self.lista_canciones: return
+        
+        if self.modo_aleatorio:
+            self.indice_actual = random.randint(0, len(self.lista_canciones) - 1)
+        else:
+            self.indice_actual += 1
+            if self.indice_actual >= len(self.lista_canciones):
+                if self.modo_repetir:
+                    self.indice_actual = 0
+                else:
+                    self.indice_actual = len(self.lista_canciones) - 1
+                    self.parar()
+                    return
+        self.reproducir()
+
+    def anterior(self):
+        if not self.lista_canciones: return
+        self.indice_actual -= 1
+        if self.indice_actual < 0:
+            self.indice_actual = 0
+        self.reproducir()
