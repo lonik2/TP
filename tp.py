@@ -44,6 +44,7 @@ class ReproductorMusical:
         tk.Button(frame_superior, text="Cargar Carpeta", command=self.cargar_carpeta).pack(side="left", padx=5)
         tk.Button(frame_superior, text="Guardar Playlist", command=self.guardar_playlist).pack(side="left", padx=5)
         tk.Button(frame_superior, text="Cargar Playlist", command=self.cargar_playlist).pack(side="left", padx=5)
+        tk.Button(frame_superior, text="Borrar Cancion", command=self.borrar_cancion, bg="#f8d7da").pack(side="left", padx=2)
 
         self.listbox = tk.Listbox(frame_medio, width=40)
         self.listbox.pack(side="left", fill="both", expand=True)
@@ -298,6 +299,30 @@ class ReproductorMusical:
                     self.listbox.insert(tk.END, f"{info['artista']} - {info['titulo']}")
             except:
                 pass
+    
+    def borrar_cancion(self):
+        seleccion = self.listbox.curselection()
+        
+        if not seleccion:
+            messagebox.showwarning("Aviso", "Primero hacé clic en una canción de la lista para borrarla.")
+            return
+
+        indice = seleccion[0]
+
+        if indice == self.indice_actual and self.reproduciendo:
+            pygame.mixer.music.stop()
+            self.reproduciendo = False
+            self.label_titulo.config(text="Título: ---")
+            self.label_artista.config(text="Artista: ---")
+            self.label_caratula.config(image="", text="Sin Carátula")
+
+        self.lista_canciones.pop(indice)
+        self.listbox.delete(indice)
+
+        if indice < self.indice_actual:
+            self.indice_actual -= 1
+
+        self.guardar_sesion_automatica()
 
 if __name__ == "__main__":
     ventana = tk.Tk()
