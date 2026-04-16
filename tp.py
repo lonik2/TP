@@ -86,10 +86,10 @@ class ReproductorMusical:
         self.slider_volumen.set(0.5) # Volumen a la mitad por defecto
         self.slider_volumen.pack(side="left")
 
-        def cargar_carpeta(self):
+    def cargar_carpeta(self):
         carpeta = filedialog.askdirectory()
         if not carpeta:
-            return
+            return  
         
         self.lista_canciones.clear()
         self.listbox.delete(0, tk.END)
@@ -99,7 +99,6 @@ class ReproductorMusical:
                 ruta_completa = os.path.join(carpeta, archivo)
                 info = self.extraer_metadatos(ruta_completa)
                 self.lista_canciones.append(info)
-                # Mostrar en la lista de forma simple
                 texto_lista = f"{info['artista']} - {info['titulo']}"
                 self.listbox.insert(tk.END, texto_lista)
 
@@ -137,13 +136,11 @@ class ReproductorMusical:
         pygame.mixer.music.play()
         self.reproduciendo = True
         
-        # Actualizar info en pantalla
         self.label_titulo.config(text=f"Título: {cancion['titulo']}")
         self.label_artista.config(text=f"Artista: {cancion['artista']}")
         self.label_album.config(text=f"Álbum: {cancion['album']}")
         self.mostrar_caratula(cancion["ruta"])
         
-        # Marcar en la lista
         self.listbox.selection_clear(0, tk.END)
         self.listbox.selection_set(self.indice_actual)
         self.listbox.activate(self.indice_actual)
@@ -182,3 +179,77 @@ class ReproductorMusical:
         if self.indice_actual < 0:
             self.indice_actual = 0
         self.reproducir()
+    
+    def mostrar_caratula(self, ruta):
+        try:
+            audio = MP3(ruta, ID3=ID3)
+            for tag in audio.tags.values():
+                if isinstance(tag, APIC):
+                    imagen_data = tag.data
+                    img = Image.open(io.BytesIO(imagen_data))
+                    img = img.resize((150, 150), Image.Resampling.LANCZOS)
+                    self.img_tk = ImageTk.PhotoImage(img)
+                    self.label_caratula.config(image=self.img_tk, text="")
+                    return
+            self.label_caratula.config(image="", text="Sin Carátula", bg="gray")
+        except:
+            self.label_caratula.config(image="", text="Sin Carátula", bg="gray")
+    
+    def cambiar_volumen(self, valor):
+        pygame.mixer.music.set_volume(float(valor))
+
+    def toggle_aleatorio(self):
+        self.modo_aleatorio = not self.modo_aleatorio
+        estado = "ON" if self.modo_aleatorio else "OFF"
+        self.btn_aleatorio.config(text=f"Aleatorio: {estado}")
+
+    def toggle_repetir(self):
+        self.modo_repetir = not self.modo_repetir
+        estado = "ON" if self.modo_repetir else "OFF"
+        self.btn_repetir.config(text=f"Repetir: {estado}")
+
+    def actualizar_barra_progreso(self):
+        if pygame.mixer.music.get_busy() and self.reproduciendo:
+            tiempo_actual = pygame.mixer.music.get_pos() / 1000
+            cancion = self.lista_canciones[self.indice_actual]
+            duracion_total = cancion["duracion"]
+            
+            if duracion_total > 0:
+                porcentaje = (tiempo_actual / duracion_total) * 100
+                self.barra_progreso["value"] = porcentaje
+                
+                m_act, s_act = divmod(int(tiempo_actual), 60)
+                m_tot, s_tot = divmod(int(duracion_total), 60)
+                self.label_tiempo.config(text=f"{m_act:02d}:{s_act:02d} / {m_tot:02d}:{s_tot:02d}")
+                
+                if tiempo_actual >= duracion_total - 1: # Margen de 1 segundo
+                    self.siguiente()
+
+        self.root.after(1000, self.actualizar_barra_progreso)
+
+    def guardar_playlist(self):
+        if not self.lista_canciones:
+            messagebox.showwarning("Aviso", "No hay canciones para guardar.")
+            return
+            
+        ruta_archivo = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        if ruta_archivo:
+            with open(ruta_archivo, 'w', encoding='utf-8') as archivo:
+                json.dump(self.lista_canciones, archivo, indent=4)
+            messagebox.showinfo("Éxito", "Playlist guardada correctamente.")
+
+    def cargar_playlist(self):
+        ruta_archivo = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
+        if ruta_archivo:
+            with open(ruta_archivo, 'r', encoding='utf-8') as archivo:
+                self.lista_canciones = json.load(archivo)
+            
+            self.listbox.delete(0, tk.END)
+            for info in self.lista_canciones:
+                texto_lista = f"{info['artista']} - {info['titulo']}"
+                self.listbox.insert(tk.END, texto_lista)
+
+if __name__ == "__main__":
+    ventana = tk.Tk()
+    app = ReproductorMusical(ventana)
+    ventana.mainloop()
