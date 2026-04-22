@@ -12,10 +12,10 @@ import io
 class ReproductorMusical:
     def __init__(self, root):
         self.root = root
-        self.root.title("Reproductor de Música - Proyecto Final")
+        self.root.title("Reproductor de Música")
         self.root.geometry("600x500")
         
-        pygame.mixer.init()        
+        pygame.mixer.init()
         
         self.lista_canciones = []
         self.indice_actual = 0
@@ -138,7 +138,6 @@ class ReproductorMusical:
             audio = MP3(ruta, ID3=ID3)
             info["duracion"] = audio.info.length
             
-            # Leer etiquetas ID3
             if audio.tags:
                 if 'TIT2' in audio.tags:
                     info["titulo"] = str(audio.tags['TIT2'])
@@ -288,7 +287,6 @@ class ReproductorMusical:
             print(f"No se pudo auto-guardar: {e}")
 
     def cargar_sesion_automatica(self):
-        """Si existe el archivo de la sesión anterior, lo carga apenas abre el programa."""
         if os.path.exists(self.archivo_auto_guardado):
             try:
                 with open(self.archivo_auto_guardado, 'r', encoding='utf-8') as f:
